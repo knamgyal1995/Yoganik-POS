@@ -2,7 +2,7 @@
   "name": "요가니크 POS",
   "short_name": "요가니크",
   "description": "요가니크 판매 관리 시스템",
-  "start_url": "./pos.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
