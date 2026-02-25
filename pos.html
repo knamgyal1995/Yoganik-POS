@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="요가니크 POS">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>요가니크 POS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      -webkit-text-size-adjust: none;
+      font-family: -apple-system, 'Apple SD Gothic Neo', '맑은 고딕', sans-serif;
+      background: #F5F6FA;
+      color: #1A1A2E;
+    }
+
+    :root {
+      --green:   #2ECC71;
+      --green-d: #27AE60;
+      --red:     #E74C3C;
+      --navy:    #1A1A2E;
+      --gray:    #7F8C8D;
+      --border:  #E8ECF0;
+      --card:    #FFFFFF;
+      --shadow:  0 2px 10px rgba(0,0,0,.07);
+      --radius:  14px;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Offline Banner ── */
+    #offline-bar {
+      background: var(--red); color: #fff;
+      text-align: center; padding: 7px; font-size: 13px; font-weight: 600;
+      display: none; flex-shrink: 0;
+    }
+    #offline-bar.on { display: block; }
+
+    /* ── Header ── */
+    #header {
+      background: var(--navy); color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px;
+      min-height: 60px; flex-shrink: 0;
+    }
+    .h-brand { font-size: 18px; font-weight: 800; letter-spacing: -.5px; }
+    .h-date  { font-size: 11px; opacity: .6; margin-top: 2px; }
+    .h-stats { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .h-stat  { text-align: center; }
+    .h-stat-val { font-size: 16px; font-weight: 700; }
+    .h-stat-lbl { font-size: 10px; opacity: .6; }
+    .h-btn {
+      background: rgba(255,255,255,.15); border: none; color: #fff;
+      padding: 7px 11px; border-radius: 10px; font-size: 12px; font-weight: 600;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+    }
+    .h-btn:active { background: rgba(255,255,255,.25); }
+
+    /* ── Main ── */
+    #main {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Product Panel ── */
+    #products-panel {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px 12px;
+    }
+    #products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .p-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px 12px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      min-height: 96px;
+      position: relative;
+      border: 2px solid transparent;
+      transition: border-color .1s, background .1s, transform .08s;
+    }
+    .p-card:active { transform: scale(.96); }
+    .p-card.in-cart { border-color: var(--green); background: #F0FDF6; }
+    .p-name  { font-size: 14px; font-weight: 700; line-height: 1.35; margin-bottom: 8px; white-space: pre-line; }
+    .p-price { font-size: 16px; font-weight: 700; color: var(--green-d); }
+    .p-badge {
+      position: absolute; top: -7px; right: -7px;
+      background: var(--green); color: #fff;
+      border-radius: 50%; width: 24px; height: 24px;
+      font-size: 13px; font-weight: 700;
+      display: none; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(46,204,113,.4);
+    }
+    .p-card.in-cart .p-badge { display: flex; }
+
+    /* ── Cart Panel ── */
+    #cart-panel {
+      width: 285px; flex-shrink: 0;
+      min-height: 0;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      box-shadow: -3px 0 12px rgba(0,0,0,.05);
+    }
+    #cart-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; min-height: 0;
+    }
+    #cart-head h2 { font-size: 16px; font-weight: 700; }
+    #btn-clear {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 5px 10px; font-size: 12px; color: var(--gray);
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    #cart-body {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 10px 14px;
+    }
+    #cart-empty {
+      height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--gray); font-size: 14px; gap: 10px;
+    }
+    .cart-item { padding: 10px 0; border-bottom: 1px solid #F0F2F5; }
+    .ci-name   { font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+    .ci-row    { display: flex; align-items: center; justify-content: space-between; }
+    .qty-wrap  { display: flex; align-items: center; gap: 10px; }
+    .btn-q {
+      width: 36px; height: 36px; border-radius: 50%; border: none;
+      font-size: 20px; font-weight: 700; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+    .btn-q-m { background: var(--red); }
+    .btn-q-p { background: var(--green); }
+    .btn-q:active { opacity: .75; }
+    .qty-n  { font-size: 17px; font-weight: 700; min-width: 22px; text-align: center; }
+    .ci-sub { font-size: 13px; font-weight: 700; }
+
+    /* Cart Footer */
+    #cart-foot {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0; min-height: 0;
+    }
+    .disc-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .disc-row label { font-size: 12px; color: var(--gray); white-space: nowrap; }
+    #disc-input {
+      flex: 1; border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 10px; font-size: 14px; text-align: right; outline: none;
+    }
+    #disc-input:focus { border-color: var(--green); }
+    .disc-row span { font-size: 12px; color: var(--gray); }
+    .tot-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .tot-row .lbl { font-size: 13px; color: var(--gray); }
+    .tot-row .amt { font-size: 14px; font-weight: 600; }
+    .tot-row.main .lbl { font-size: 15px; font-weight: 700; color: var(--navy); }
+    .tot-row.main .amt { font-size: 22px; font-weight: 800; color: var(--navy); }
+    #btn-checkout {
+      margin-top: 14px; width: 100%; padding: 17px;
+      background: var(--green); color: #fff; border: none;
+      border-radius: var(--radius); font-size: 18px; font-weight: 800;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      transition: background .1s; letter-spacing: -.3px;
+    }
+    #btn-checkout:active  { background: var(--green-d); }
+    #btn-checkout:disabled { background: #BDC3C7; cursor: not-allowed; }
+
+    /* ── Modals ── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 200; padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 22px;
+      padding: 28px 24px; width: 100%; max-width: 460px;
+      max-height: 92vh; overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,.22);
+      animation: popIn .18s ease;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.94) translateY(10px); }
+      to   { opacity: 1; transform: scale(1)   translateY(0); }
+    }
+    .modal h2 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 22px; }
+
+    /* Payment toggle — works for 2 or 3 buttons */
+    .pay-toggle { display: flex; gap: 8px; margin-bottom: 18px; }
+    .pay-btn {
+      flex: 1; padding: 14px 8px; border: 2px solid var(--border);
+      border-radius: 12px; background: #fff;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      transition: all .1s;
+    }
+    .pay-btn.active { border-color: var(--green); background: #F0FDF6; color: var(--green-d); }
+
+    #qr-wrap { text-align: center; margin: 10px 0 18px; }
+    #qr-img {
+      width: 230px; height: 230px; object-fit: contain;
+      border-radius: 14px; border: 2px solid var(--border); padding: 6px;
+      display: block; margin: 0 auto;
+      transform: rotate(90deg);
+    }
+    #qr-placeholder {
+      width: 230px; height: 230px; border: 2px dashed var(--border);
+      border-radius: 14px; margin: 0 auto;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--gray); font-size: 13px; gap: 10px;
+    }
+    .qr-hint { font-size: 12px; color: var(--gray); margin-top: 10px; }
+
+    .order-box { background: #F8F9FB; border-radius: 12px; padding: 14px; margin-bottom: 18px; font-size: 13px; }
+    .ob-row    { display: flex; justify-content: space-between; padding: 3px 0; color: var(--gray); }
+    .ob-total  {
+      display: flex; justify-content: space-between;
+      border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px;
+      font-size: 16px; font-weight: 800; color: var(--navy);
+    }
+
+    /* Shipping link button */
+    .btn-ship {
+      display: block; text-align: center; padding: 14px;
+      border: 1.5px dashed var(--border); border-radius: 14px;
+      color: var(--gray); text-decoration: none; font-size: 14px; font-weight: 600;
+      margin-bottom: 12px;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-ship:active { border-color: var(--green); color: var(--green-d); }
+
+    .btn-confirm {
+      width: 100%; padding: 18px; background: var(--green); color: #fff;
+      border: none; border-radius: 14px; font-size: 18px; font-weight: 800;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      margin-bottom: 12px; transition: background .1s;
+    }
+    .btn-confirm:active   { background: var(--green-d); }
+    .btn-confirm:disabled { background: #BDC3C7; cursor: not-allowed; }
+    .btn-cancel {
+      width: 100%; padding: 14px; background: none;
+      border: 1px solid var(--border); border-radius: 14px;
+      font-size: 15px; color: var(--gray);
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Summary modal */
+    .sum-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .sum-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .sum-card { background: #F8F9FB; border-radius: 12px; padding: 14px; text-align: center; }
+    .sum-card .sv { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .sum-card .sl { font-size: 12px; color: var(--gray); }
+
+    .tx-list { max-height: 260px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .tx-item { padding: 10px 0; border-bottom: 1px solid #F0F2F5; }
+    .tx-top  { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+    .tx-sub  { font-size: 12px; color: var(--gray); }
+    .tx-pay  { font-size: 11px; color: var(--gray); margin-top: 2px; }
+    .tx-item.refunded .tx-top { text-decoration: line-through; color: var(--gray); }
+
+    .btn-refund {
+      width: 100%; margin-top: 14px; padding: 13px;
+      background: none; border: 1.5px solid var(--red); border-radius: 12px;
+      color: var(--red); font-size: 14px; font-weight: 700;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    .btn-close-modal {
+      width: 100%; margin-top: 10px; padding: 14px;
+      background: var(--navy); color: #fff; border: none;
+      border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Admin Modal ── */
+    .admin-section-title {
+      font-size: 13px; font-weight: 700; color: var(--gray);
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 10px; margin-top: 4px;
+    }
+    .admin-prod-list {
+      max-height: 200px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      margin-bottom: 20px; border: 1px solid var(--border); border-radius: 12px;
+    }
+    .admin-prod-item {
+      display: flex; align-items: center; padding: 12px 14px;
+      border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    .admin-prod-item:last-child { border-bottom: none; }
+    .apn { font-weight: 600; flex: 1; }
+    .app { color: var(--green-d); font-weight: 700; margin: 0 10px; font-size: 13px; }
+    .btn-del-prod {
+      background: none; border: 1px solid var(--red); border-radius: 8px;
+      color: var(--red); padding: 5px 10px; font-size: 12px; font-weight: 600;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .admin-empty {
+      text-align: center; color: var(--gray); font-size: 13px;
+      padding: 20px; border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .add-prod-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .add-prod-form input {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; font-size: 15px; outline: none;
+      -webkit-appearance: none;
+    }
+    .add-prod-form input:focus { border-color: var(--green); }
+    .btn-add-prod {
+      width: 100%; padding: 16px; background: var(--green); color: #fff;
+      border: none; border-radius: 12px; font-size: 16px; font-weight: 800;
+      cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      margin-bottom: 8px;
+    }
+    .btn-add-prod:active { background: var(--green-d); }
+
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: var(--navy); color: #fff;
+      padding: 12px 26px; border-radius: 28px;
+      font-size: 14px; font-weight: 700;
+      z-index: 999; pointer-events: none;
+      opacity: 0; transition: opacity .25s; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Mobile: cart as slide-up bottom sheet ── */
+    @media (max-width: 640px) {
+      #products-panel { padding-bottom: 90px; }
+
+      #cart-panel {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        width: 100%; max-height: 80vh;
+        border-radius: 22px 22px 0 0;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        z-index: 80;
+        transform: translateY(calc(100% - 72px));
+        transition: transform .3s cubic-bezier(.4,0,.2,1);
+        box-shadow: 0 -6px 30px rgba(0,0,0,.12);
+      }
+      #cart-panel.mobile-open { transform: translateY(0); }
+
+      #cart-head {
+        position: relative; padding-top: 20px; cursor: pointer;
+      }
+      #cart-head::before {
+        content: ''; display: block;
+        width: 36px; height: 4px; background: var(--border); border-radius: 2px;
+        position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+      }
+
+      #cart-foot { padding: 10px 14px; }
+      .disc-row  { display: none; }
+      #cart-panel.mobile-open .disc-row { display: flex; }
+
+      #products-grid { gap: 8px; }
+      .p-card  { min-height: 80px; padding: 14px 10px; }
+      .p-name  { font-size: 13px; }
+      .p-price { font-size: 15px; }
+    }
+
+    ::-webkit-scrollbar       { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #DDD; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="offline-bar">오프라인 — 거래가 저장되어 온라인 시 자동 전송됩니다</div>
+
+  <div id="header">
+    <div>
+      <div class="h-brand">🌿 요가니크</div>
+      <div class="h-date" id="h-date"></div>
+    </div>
+    <div class="h-stats">
+      <div class="h-stat">
+        <div class="h-stat-val" id="daily-total">₩0</div>
+        <div class="h-stat-lbl">오늘 매출</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-val" id="daily-count">0</div>
+        <div class="h-stat-lbl">거래 수</div>
+      </div>
+      <button class="h-btn" onclick="openSummary()">📊 요약</button>
+      <button class="h-btn" onclick="openAdmin()">⚙️ 관리</button>
+      <button class="h-btn" onclick="document.getElementById('qr-file-input').click()">🖼️ QR</button>
+      <input id="qr-file-input" type="file" accept="image/*" style="display:none" onchange="saveQRImage(event)">
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="products-panel">
+      <div id="products-grid"></div>
+    </div>
+
+    <div id="cart-panel">
+      <div id="cart-head">
+        <h2>🛒 장바구니</h2>
+        <button id="btn-clear" onclick="clearCart()">비우기</button>
+      </div>
+      <div id="cart-body">
+        <div id="cart-empty">
+          <span style="font-size:36px">🛍️</span>
+          상품을 선택하세요
+        </div>
+      </div>
+      <div id="cart-foot">
+        <div class="disc-row">
+          <label>할인</label>
+          <input id="disc-input" type="number" inputmode="numeric" placeholder="0" min="0" oninput="renderFooter(); saveCart()">
+          <span>원</span>
+        </div>
+        <div class="tot-row">
+          <span class="lbl">소계</span>
+          <span class="amt" id="subtotal-disp">₩0</span>
+        </div>
+        <div class="tot-row" id="disc-disp-row" style="display:none">
+          <span class="lbl">할인</span>
+          <span class="amt" style="color:var(--red)" id="disc-disp">-₩0</span>
+        </div>
+        <div class="tot-row main">
+          <span class="lbl">합계</span>
+          <span class="amt" id="total-disp">₩0</span>
+        </div>
+        <button id="btn-checkout" onclick="openCheckout()" disabled>결제하기</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+
+<!-- CHECKOUT MODAL -->
+<div class="overlay" id="ov-checkout">
+  <div class="modal">
+    <h2>결제</h2>
+    <div class="pay-toggle">
+      <button class="pay-btn active" id="btn-pay-toss" onclick="setPayMethod('TOSS')">📱 TOSS</button>
+      <button class="pay-btn"        id="btn-pay-card" onclick="setPayMethod('CARD')">💳 카드</button>
+      <button class="pay-btn"        id="btn-pay-cash" onclick="setPayMethod('CASH')">💵 현금</button>
+    </div>
+    <div id="qr-wrap">
+      <img id="qr-img" src="" alt="QR Code" style="display:none;">
+      <div id="qr-placeholder">
+        <span style="font-size:52px">📷</span>
+        <span>헤더의 🖼️ QR 버튼을 눌러<br>QR 이미지를 선택하세요</span>
+      </div>
+      <div class="qr-hint">고객에게 TOSS QR 코드를 보여주세요</div>
+    </div>
+    <div class="order-box" id="checkout-summary"></div>
+    <a href="https://forms.gle/kzpgpV3r8uYr1FxcA" target="_blank" rel="noopener" class="btn-ship">
+      📦 택배 배송? 배송 정보 입력하기
+    </a>
+    <button class="btn-confirm" id="btn-confirm-pay" onclick="confirmPayment()">✓ 결제 완료</button>
+    <button class="btn-cancel"  onclick="closeOverlay('ov-checkout')">취소</button>
+  </div>
+</div>
+
+
+<!-- SUMMARY MODAL -->
+<div class="overlay" id="ov-summary">
+  <div class="modal">
+    <h2>📊 오늘의 매출</h2>
+    <div class="sum-grid">
+      <div class="sum-card"><div class="sv" id="s-total">₩0</div><div class="sl">총 매출</div></div>
+      <div class="sum-card"><div class="sv" id="s-count">0</div><div class="sl">거래 수</div></div>
+    </div>
+    <div class="sum-grid-3">
+      <div class="sum-card"><div class="sv" id="s-toss">₩0</div><div class="sl">TOSS</div></div>
+      <div class="sum-card"><div class="sv" id="s-card">₩0</div><div class="sl">카드</div></div>
+      <div class="sum-card"><div class="sv" id="s-cash">₩0</div><div class="sl">현금</div></div>
+    </div>
+    <h3 style="font-size:13px;color:var(--gray);margin-bottom:10px;">거래 내역</h3>
+    <div class="tx-list" id="tx-list"></div>
+    <button class="btn-refund"      onclick="refundLast()">↩ 마지막 거래 취소</button>
+    <button class="btn-close-modal" onclick="closeOverlay('ov-summary')">닫기</button>
+  </div>
+</div>
+
+
+<!-- ADMIN MODAL -->
+<div class="overlay" id="ov-admin">
+  <div class="modal">
+    <h2>⚙️ 상품 관리</h2>
+
+    <div class="admin-section-title">추가 상품 목록</div>
+    <div id="admin-prod-list"></div>
+
+    <div class="admin-section-title">새 상품 추가</div>
+    <div class="add-prod-form">
+      <input id="admin-prod-name"  type="text"   inputmode="text"    placeholder="상품명 (예: 아로마 캔들)" autocomplete="off">
+      <input id="admin-prod-price" type="number" inputmode="numeric" placeholder="가격 (원)" min="0" autocomplete="off">
+    </div>
+    <button class="btn-add-prod" onclick="addProduct()">+ 상품 추가</button>
+    <button class="btn-close-modal" onclick="closeOverlay('ov-admin')">닫기</button>
+  </div>
+</div>
+
+
+<div id="toast"></div>
+
+
+<script>
+// ── Config ───────────────────────────────────────────────────
+const CONFIG = {
+  SHEETS_URL: 'https://script.google.com/macros/s/AKfycbz3NgAnFpeVK_Fk-oTTdrF7CeFzFY4wSHbjRL114fWQgCYsIim_aBqqvfOWidmBdwKKsA/exec',
+};
+
+// ── Default Products (hardcoded, never deleted) ───────────────
+const DEFAULT_PRODUCTS = [
+  { id: 1,  name: '인센스\n(자몽)',               price: 16000  },
+  { id: 2,  name: '인센스\n(그린티)',             price: 16000  },
+  { id: 3,  name: '팔로산토\n5 SET',              price: 10500  },
+  { id: 4,  name: '세트상품\n(인센스+팔로산토)',  price: 25000  },
+  { id: 5,  name: '싱잉볼 XS',                   price: 107000 },
+  { id: 6,  name: '싱잉볼 S',                    price: 137000 },
+  { id: 7,  name: '싱잉볼 M',                    price: 167000 },
+  { id: 8,  name: '인센스_스타터',               price: 2000   },
+  { id: 9,  name: '팔로산토_스타터',             price: 2000   },
+  { id: 10, name: '만달라',                      price: 90000  },
+];
+
+// ── State ────────────────────────────────────────────────────
+let customProducts = loadCustomProducts();
+let cart      = {};
+let payMethod = 'TOSS';
+let txList    = loadTx();
+
+function allProducts() { return [...DEFAULT_PRODUCTS, ...customProducts]; }
+
+// ── Utils ────────────────────────────────────────────────────
+const KRW = n => '₩' + Math.max(0, n).toLocaleString('ko-KR');
+const pad = n  => String(n).padStart(2, '0');
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function now() {
+  const d = new Date();
+  return { date: todayKey(), time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` };
+}
+function dateLabel() {
+  const d = new Date(), day = ['일','월','화','수','목','금','토'][d.getDay()];
+  return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${day})`;
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function toast(msg, ms = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), ms);
+}
+function nextProductId() {
+  const n = (parseInt(localStorage.getItem('yn_pid') || '1000') + 1);
+  localStorage.setItem('yn_pid', n);
+  return n;
+}
+
+// ── LocalStorage ─────────────────────────────────────────────
+function loadTx()       { try { return JSON.parse(localStorage.getItem('yn_tx_' + todayKey()) || '[]'); } catch { return []; } }
+function saveTx()       { localStorage.setItem('yn_tx_' + todayKey(), JSON.stringify(txList)); }
+function loadPending()  { try { return JSON.parse(localStorage.getItem('yn_pending') || '[]'); } catch { return []; } }
+function savePending(a) { localStorage.setItem('yn_pending', JSON.stringify(a)); }
+
+function loadCustomProducts() {
+  try { return JSON.parse(localStorage.getItem('yn_custom_products') || '[]'); } catch { return []; }
+}
+function saveCustomProducts() {
+  localStorage.setItem('yn_custom_products', JSON.stringify(customProducts));
+}
+
+function saveCart() {
+  const disc = parseInt(document.getElementById('disc-input').value) || 0;
+  localStorage.setItem('yn_cart', JSON.stringify({ items: cart, discount: disc }));
+}
+function loadSavedCart() {
+  try {
+    const data = JSON.parse(localStorage.getItem('yn_cart') || '{}');
+    return { items: data.items || {}, discount: data.discount || 0 };
+  } catch { return { items: {}, discount: 0 }; }
+}
+
+// ── Stats ────────────────────────────────────────────────────
+function stats() {
+  const a = txList.filter(t => !t.refunded);
+  return {
+    total: a.reduce((s,t) => s + t.total, 0),
+    count: a.length,
+    toss: a.filter(t => t.pay === 'TOSS' || t.pay === 'QR').reduce((s,t) => s + t.total, 0),
+    card: a.filter(t => t.pay === 'CARD').reduce((s,t) => s + t.total, 0),
+    cash: a.filter(t => t.pay === 'CASH' || t.pay === '현금').reduce((s,t) => s + t.total, 0),
+  };
+}
+function updateHeader() {
+  const s = stats();
+  document.getElementById('daily-total').textContent = KRW(s.total);
+  document.getElementById('daily-count').textContent = s.count;
+}
+
+// ── Cart ─────────────────────────────────────────────────────
+function subtotal() {
+  return Object.entries(cart).reduce((sum, [id, qty]) => {
+    const p = allProducts().find(p => p.id === +id);
+    return sum + (p ? p.price * qty : 0);
+  }, 0);
+}
+function discount() {
+  const v = parseInt(document.getElementById('disc-input').value) || 0;
+  return Math.min(v, subtotal());
+}
+function total() { return Math.max(0, subtotal() - discount()); }
+
+function addItem(id) {
+  cart[id] = (cart[id] || 0) + 1;
+  saveCart();
+  renderCart();
+  openMobileCart();
+}
+function changeQty(id, delta) {
+  const q = (cart[id] || 0) + delta;
+  if (q <= 0) delete cart[id]; else cart[id] = q;
+  saveCart();
+  renderCart();
+}
+function clearCart() {
+  cart = {};
+  document.getElementById('disc-input').value = '';
+  saveCart();
+  renderCart();
+}
+
+function renderCart() {
+  const body  = document.getElementById('cart-body');
+  const empty = document.getElementById('cart-empty');
+  [...body.children].forEach(c => { if (c !== empty) c.remove(); });
+
+  if (Object.keys(cart).length === 0) {
+    empty.style.display = 'flex';
+  } else {
+    empty.style.display = 'none';
+    Object.entries(cart).forEach(([id, qty]) => {
+      const p = allProducts().find(p => p.id === +id);
+      if (!p) return;
+      const el = document.createElement('div');
+      el.className = 'cart-item';
+      el.innerHTML = `
+        <div class="ci-name">${p.name.replace('\n',' ')}</div>
+        <div class="ci-row">
+          <div class="qty-wrap">
+            <button class="btn-q btn-q-m" onclick="changeQty(${id},-1)">−</button>
+            <span class="qty-n">${qty}</span>
+            <button class="btn-q btn-q-p" onclick="changeQty(${id},+1)">+</button>
+          </div>
+          <span class="ci-sub">${KRW(p.price * qty)}</span>
+        </div>`;
+      body.appendChild(el);
+    });
+  }
+  renderFooter();
+  renderBadges();
+}
+
+function renderFooter() {
+  const sub = subtotal(), disc = discount(), tot = total();
+  document.getElementById('subtotal-disp').textContent = KRW(sub);
+  document.getElementById('total-disp').textContent    = KRW(tot);
+  const dr = document.getElementById('disc-disp-row');
+  if (disc > 0) { dr.style.display = 'flex'; document.getElementById('disc-disp').textContent = '-' + KRW(disc); }
+  else          { dr.style.display = 'none'; }
+  document.getElementById('btn-checkout').disabled = Object.keys(cart).length === 0;
+}
+
+function renderBadges() {
+  allProducts().forEach(p => {
+    const card = document.getElementById('p-' + p.id);
+    if (!card) return;
+    const qty = cart[p.id] || 0;
+    card.classList.toggle('in-cart', qty > 0);
+    const badge = card.querySelector('.p-badge');
+    if (badge) badge.textContent = qty;
+  });
+}
+
+// ── Products Grid ────────────────────────────────────────────
+function renderProducts() {
+  const grid = document.getElementById('products-grid');
+  grid.innerHTML = '';
+  allProducts().forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'p-card'; el.id = 'p-' + p.id;
+    el.onclick = () => addItem(p.id);
+    el.innerHTML = `<div class="p-badge">0</div><div class="p-name">${p.name}</div><div class="p-price">${KRW(p.price)}</div>`;
+    grid.appendChild(el);
+  });
+  renderBadges();
+}
+
+// ── QR Image ─────────────────────────────────────────────────
+function saveQRImage(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { localStorage.setItem('yn_qr', e.target.result); toast('✓ QR 이미지가 저장됐어요!'); };
+  reader.readAsDataURL(file);
+}
+function loadStoredQR() {
+  const stored = localStorage.getItem('yn_qr');
+  const img = document.getElementById('qr-img'), ph = document.getElementById('qr-placeholder');
+  if (stored) { img.src = stored; img.style.display = 'block'; ph.style.display = 'none'; }
+  else        { img.style.display = 'none'; ph.style.display = 'flex'; }
+}
+
+// ── Checkout ─────────────────────────────────────────────────
+function openCheckout() {
+  if (Object.keys(cart).length === 0) return;
+  loadStoredQR();
+  const items = Object.entries(cart).map(([id, qty]) => {
+    const p = allProducts().find(p => p.id === +id);
+    return { name: p.name.replace('\n',' '), qty, price: p.price };
+  });
+  const disc = discount(), tot = total();
+  let html = items.map(i => `<div class="ob-row"><span>${i.name} × ${i.qty}</span><span>${KRW(i.price*i.qty)}</span></div>`).join('');
+  if (disc > 0) html += `<div class="ob-row"><span>할인</span><span style="color:var(--red)">-${KRW(disc)}</span></div>`;
+  html += `<div class="ob-total"><span>합계</span><span>${KRW(tot)}</span></div>`;
+  document.getElementById('checkout-summary').innerHTML = html;
+
+  // Reset confirm button
+  const btn = document.getElementById('btn-confirm-pay');
+  btn.disabled = false;
+  btn.textContent = '✓ 결제 완료';
+
+  setPayMethod(payMethod);
+  openOverlay('ov-checkout');
+}
+
+function setPayMethod(m) {
+  payMethod = m;
+  ['TOSS', 'CARD', 'CASH'].forEach(method => {
+    document.getElementById('btn-pay-' + method.toLowerCase())
+      .classList.toggle('active', m === method);
+  });
+  document.getElementById('qr-wrap').style.display = (m === 'TOSS') ? 'block' : 'none';
+}
+
+async function confirmPayment() {
+  const btn = document.getElementById('btn-confirm-pay');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ 처리 중...';
+
+  const t = now();
+  const items = Object.entries(cart).map(([id, qty]) => {
+    const p = allProducts().find(p => p.id === +id);
+    return { name: p.name.replace('\n',' '), qty, price: p.price };
+  });
+  const disc = discount(), tot = total();
+  const tx = {
+    id: uid(),
+    date: t.date, time: t.time,
+    items, subtotal: subtotal(),
+    discount: disc, total: tot,
+    pay: payMethod, refunded: false
+  };
+
+  txList.push(tx); saveTx(); updateHeader();
+
+  // Wait for network (max 8s), then proceed regardless
+  try {
+    await Promise.race([
+      sendToSheets(tx),
+      new Promise((_, rej) => setTimeout(() => rej('timeout'), 8000))
+    ]);
+  } catch { /* already queued in pending */ }
+
+  closeOverlay('ov-checkout');
+  clearCart();
+  toast('✓ 결제 완료! ' + KRW(tot));
+
+  btn.disabled = false;
+  btn.textContent = '✓ 결제 완료';
+}
+
+// ── Google Sheets ─────────────────────────────────────────────
+async function sendToSheets(tx) {
+  if (!CONFIG.SHEETS_URL) return;
+  const payload = {
+    id: tx.id, date: tx.date, time: tx.time,
+    items: tx.items.map(i=>`${i.name}×${i.qty}`).join(', '),
+    subtotal: tx.subtotal, discount: tx.discount,
+    total: tx.total, payMethod: tx.pay
+  };
+  try {
+    const res = await fetch(CONFIG.SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    removePending(tx.id);
+  } catch {
+    const pending = loadPending();
+    if (!pending.find(p => p.id === tx.id)) { pending.push({...payload}); savePending(pending); }
+  }
+}
+function removePending(id) { savePending(loadPending().filter(p => p.id !== id)); }
+
+async function syncPending() {
+  if (!CONFIG.SHEETS_URL) return;
+  for (const payload of [...loadPending()]) {
+    try {
+      const res = await fetch(CONFIG.SHEETS_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) removePending(payload.id);
+    } catch { break; }
+  }
+}
+
+// ── Offline ───────────────────────────────────────────────────
+function updateOnlineStatus() {
+  const bar = document.getElementById('offline-bar');
+  if (!navigator.onLine) { bar.classList.add('on'); }
+  else { bar.classList.remove('on'); syncPending(); }
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// ── Summary Modal ─────────────────────────────────────────────
+function openSummary() {
+  const s = stats();
+  document.getElementById('s-total').textContent = KRW(s.total);
+  document.getElementById('s-count').textContent = s.count;
+  document.getElementById('s-toss').textContent  = KRW(s.toss);
+  document.getElementById('s-card').textContent  = KRW(s.card);
+  document.getElementById('s-cash').textContent  = KRW(s.cash);
+  const list = document.getElementById('tx-list'), all = [...txList].reverse();
+  list.innerHTML = all.length === 0
+    ? '<div style="text-align:center;color:var(--gray);padding:20px;font-size:14px">거래 내역이 없습니다</div>'
+    : all.map(t => `<div class="tx-item${t.refunded?' refunded':''}">
+        <div class="tx-top"><span>${t.time}${t.refunded?' [취소]':''}</span><span>${KRW(t.total)}</span></div>
+        <div class="tx-sub">${t.items.map(i=>`${i.name} ×${i.qty}`).join(' / ')}</div>
+        <div class="tx-pay">${t.pay}${t.discount>0?' | 할인 '+KRW(t.discount):''}</div>
+      </div>`).join('');
+  openOverlay('ov-summary');
+}
+function refundLast() {
+  const active = txList.filter(t => !t.refunded);
+  if (active.length === 0) { toast('취소할 거래가 없습니다'); return; }
+  if (!confirm('마지막 거래를 취소하시겠습니까?')) return;
+  active[active.length - 1].refunded = true;
+  saveTx(); updateHeader(); openSummary(); toast('↩ 거래가 취소되었습니다');
+}
+
+// ── Admin Modal ───────────────────────────────────────────────
+function openAdmin() {
+  renderAdminProducts();
+  document.getElementById('admin-prod-name').value = '';
+  document.getElementById('admin-prod-price').value = '';
+  openOverlay('ov-admin');
+}
+function renderAdminProducts() {
+  const container = document.getElementById('admin-prod-list');
+  if (customProducts.length === 0) {
+    container.innerHTML = '<div class="admin-empty">추가된 상품이 없습니다</div>';
+    return;
+  }
+  container.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'admin-prod-list';
+  customProducts.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'admin-prod-item';
+    el.innerHTML = `
+      <span class="apn">${p.name}</span>
+      <span class="app">${KRW(p.price)}</span>
+      <button class="btn-del-prod" onclick="deleteProduct(${p.id})">삭제</button>`;
+    list.appendChild(el);
+  });
+  container.appendChild(list);
+}
+function addProduct() {
+  const nameEl  = document.getElementById('admin-prod-name');
+  const priceEl = document.getElementById('admin-prod-price');
+  const name  = nameEl.value.trim();
+  const price = parseInt(priceEl.value) || 0;
+  if (!name)    { toast('상품명을 입력하세요'); nameEl.focus();  return; }
+  if (price <= 0) { toast('가격을 입력하세요'); priceEl.focus(); return; }
+
+  const id = nextProductId();
+  const product = { id, name, price };
+  customProducts.push(product);
+  saveCustomProducts();
+  renderProducts();
+  renderAdminProducts();
+  nameEl.value = '';
+  priceEl.value = '';
+  toast('✓ 상품이 추가되었습니다');
+
+  // Sync to Google Sheets
+  if (CONFIG.SHEETS_URL) {
+    const t = now();
+    fetch(CONFIG.SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'addProduct', productId: id, name, price, date: t.date })
+    }).catch(() => {});
+  }
+}
+function deleteProduct(id) {
+  if (!confirm('이 상품을 삭제하시겠습니까?')) return;
+  customProducts = customProducts.filter(p => p.id !== id);
+  // Remove from cart if present
+  delete cart[id];
+  saveCart();
+  saveCustomProducts();
+  renderProducts();
+  renderAdminProducts();
+  toast('상품이 삭제되었습니다');
+}
+
+// ── Mobile Cart ───────────────────────────────────────────────
+function isMobile()      { return window.innerWidth <= 640; }
+function toggleMobileCart() { if (isMobile()) document.getElementById('cart-panel').classList.toggle('mobile-open'); }
+function openMobileCart()   { if (isMobile()) document.getElementById('cart-panel').classList.add('mobile-open'); }
+
+// ── Modal Helpers ─────────────────────────────────────────────
+function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) closeOverlay(ov.id); });
+});
+
+// ── Service Worker ────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function init() {
+  const applyHeight = () => {
+    const h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    document.getElementById('app').style.height = h + 'px';
+  };
+  applyHeight();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', applyHeight);
+  } else {
+    window.addEventListener('resize', applyHeight);
+  }
+
+  document.getElementById('h-date').textContent = dateLabel();
+
+  // Restore saved cart
+  const saved = loadSavedCart();
+  cart = saved.items;
+  if (saved.discount) document.getElementById('disc-input').value = saved.discount;
+
+  renderProducts();
+  renderCart();
+  updateHeader();
+  updateOnlineStatus();
+  loadStoredQR();
+
+  document.getElementById('cart-head').addEventListener('click', toggleMobileCart);
+
+  setInterval(() => {
+    const k = todayKey();
+    if (k !== window._lastDay) { txList = []; updateHeader(); }
+    window._lastDay = k;
+  }, 60_000);
+
+  setInterval(() => { if (navigator.onLine) syncPending(); }, 30_000);
+}
+
+window._lastDay = todayKey();
+init();
+</script>
+</body>
+</html>
